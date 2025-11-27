@@ -127,11 +127,11 @@ def analyze_data(bs: bytes, stbl: dict):
     return fields
 
 
-PAT_CLASSIC = r'^\((?P<datetime>[A-Za-z0-9.]+)\) (?P<interface>[A-Za-z0-9]+) (?P<id>[A-Za-z0-9]+)#+(?P<data>[A-Za-z0-9]+)'
-PAT_FD = r'^\((?P<datetime>[A-Za-z0-9.]+)\) (?P<interface>[A-Za-z0-9]+) (?P<id>[A-Za-z0-9]+)#+[0-9](?P<data>[A-Za-z0-9]+)'
+PAT_CLASSIC = r'^\((?P<datetime>[A-Za-z0-9.]+)\) (?P<interface>[A-Za-z0-9]+) (?P<id>[A-Za-z0-9]+)#(?P<data>[A-Za-z0-9]+)'
+PAT_FD = r'^\((?P<datetime>[A-Za-z0-9.]+)\) (?P<interface>[A-Za-z0-9]+) (?P<id>[A-Za-z0-9]+)##[0-9](?P<data>[A-Za-z0-9]+)'
 
 
-def analyze(text, stbl, fd=False):
+def analyze(text, stbl):
     """Analyze CAN signal of CAN frame logfile format
     Args:
         text    signal text
@@ -147,8 +147,9 @@ def analyze(text, stbl, fd=False):
     signal = {"text": text}
 
     # pattern matching
-    pattern = PAT_FD if fd else PAT_CLASSIC
-    match = re.search(pattern, text)
+    match = re.search(PAT_CLASSIC, text)
+    if not match:
+        match = re.search(PAT_FD, text)
 
     if match:
         timestamp = float(match.group("datetime"))
@@ -213,7 +214,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-a", "--all", action="store_true", help="show all values in the signal")
     parser.add_argument("-b", "--bits", action="store_true", help="show values as bits of data")
-    parser.add_argument("--fd", action="store_true", help="process as CAN-FD format")
+    parser.add_argument("--fd", action="store_true", help="process as CAN-FD format (@Depreciated)")
     parser.add_argument("-v", "--verbosity", action="count", default=0, help="increase output verbosity")
     parser.add_argument("stbl", help="JSON file of signal definition table")
     parser.add_argument("fields", nargs="*", help="fields to show values in the signal")
@@ -232,7 +233,7 @@ def main():
 
         # analyze text using stbl
         # res will be True if stbl has a definition of the CAN ID
-        res, signal = analyze(line.rstrip('\r\n'), stbl, args.fd)
+        res, signal = analyze(line.rstrip('\r\n'), stbl)
 
         # print text then go to next if CAN ID is not found in stbl
         if not res:
