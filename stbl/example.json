@@ -1,0 +1,17 @@
+[
+	{"id":"010","name":"Power","values":[
+		{"start":0,"length":8,"name":"PowerStatus","unit":"State encoded","desc":"$00: OFF, $01: ON, $02: Suspended","resolution":0,"minimum":0,"type":"int","mode_signal":0,"mode_dependent":""}
+		,{"start": 8,"length":8,"name":"Temperature","unit":"degreeC","desc":"","resolution":1,"minimum":0,"type":"int","mode_signal":0,"mode_dependent":""}
+		,{"start":16,"length":48,"name":"Reserved","unit":"","desc":"","resolution":1,"minimum":0,"type":"int","mode_signal":0,"mode_dependent":""}
+	]},
+	{"id":"020","name":"SomeValues","values":[
+		{"start":0,"length":8,"name":"Mode","unit":"State encoded","desc":"$00: Point, $01: Size","resolution":0,"minimum":0,"type":"int","mode_signal":1,"mode_dependent":""}
+		,{"start": 8,"length":8,"name":"X","unit":"","desc":"","resolution":1,"minimum":-127,"type":"int","mode_signal":0,"mode_dependent":"0"}
+		,{"start":16,"length":8,"name":"Y","unit":"","desc":"","resolution":1,"minimum":-127,"type":"int","mode_signal":0,"mode_dependent":"0"}
+		,{"start":24,"length":8,"name":"Z","unit":"","desc":"","resolution":1,"minimum":-127,"type":"int","mode_signal":0,"mode_dependent":"0"}
+		,{"start":32,"length":32,"name":"Reserved","unit":"","desc":"","resolution":1,"minimum":0,"type":"int","mode_signal":0,"mode_dependent":"0"}
+		,{"start": 8,"length":16,"name":"Width","unit":"m","desc":"","resolution":0.001,"minimum":0,"type":"float","mode_signal":0,"mode_dependent":"1"}
+		,{"start":24,"length":16,"name":"Height","unit":"m","desc":"","resolution":0.001,"minimum":0,"type":"float","mode_signal":0,"mode_dependent":"1"}
+		,{"start":40,"length":24,"name":"Reserved","unit":"","desc":"","resolution":1,"minimum":0,"type":"int","mode_signal":0,"mode_dependent":"1"}
+	]}
+]
