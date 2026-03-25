@@ -182,7 +182,12 @@ def main():
         return 1
 
     stbl = list(stbl_dict.values())
+
+    # sort by id
     stbl.sort(key=lambda x: int(x["id"], 16))
+    # sort by start pos
+    for r in stbl:
+        r["values"].sort(key=lambda x: "%08s_%04d" % (x["mux_mode"], x["start"]))
 
     if args.output:
         with open(args.output, "w", encoding="utf-8") as fp:
