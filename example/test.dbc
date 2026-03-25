@@ -1,0 +1,21 @@
+VERSION ""
+NS_ :
+BS_:
+
+BU_: ECU1 ECU2
+
+BO_ 16 Msg1: 8 ECU1
+ SG_ Sig11 :  7|2@0+ (1,0) [0|0] "" ECU2
+ SG_ Sig12 : 15|8@0+ (1,0) [-127|128] "deg" ECU2
+ SG_ Sig13 : 23|12@0+ (0.1,0) [0.1|409.5] "km/h" ECU2
+
+BO_ 32 Msg2: 8 ECU1
+ SG_ Sig2M    M   :  7|8@0+ (1,0) [0|0] "" ECU2
+ SG_ Sig2_0_1 m0  : 15|8@0+ (1,0) [0|0] "" ECU2
+ SG_ Sig2_0_2 m0  : 23|8@0+ (1,0) [0|0] "" ECU2
+ SG_ Sig2_F_1 m15 : 15|8@0+ (1,0) [0|0] "" ECU2
+ SG_ Sig2_F_2 m15 : 23|16@0+ (1,0) [0|0] "" ECU2
+
+VAL_ 16 Sig11 0 "AAA" 1 "BBB" 2 "CCC" 3 "DDD" ;
+VAL_ 32 Sig2M 0 "AAA" 15 "DDD" ;
+

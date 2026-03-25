@@ -29,35 +29,35 @@ def load_stbl(file: str):
         if canid in stbl:
             continue
 
-        multi_mode = False
-        mode = None
-        mode_dependent_values = {}
+        mux = False
+        mux_indicator = None
+        mux_mode_map = {}
 
         for v in r["values"]:
-            if v["mode_signal"] == 1:
-                multi_mode = True
-                mode = v
+            if v["mux_indicator"]:
+                mux = True
+                mux_indicator = v
 
-            if v["mode_dependent"] != "":
-                mode_dependent_signal = int(v["mode_dependent"], 16)
-                if mode_dependent_signal not in mode_dependent_values:
-                    mode_dependent_values[mode_dependent_signal] = []
-                mode_dependent_values[mode_dependent_signal].append(v)
+            if v["mux_mode"] != "":
+                mux_mode = int(v["mux_mode"], 16)
+                if mux_mode not in mux_mode_map:
+                    mux_mode_map[mux_mode] = []
+                mux_mode_map[mux_mode].append(v)
 
-        if multi_mode:
+        if mux:
             stbl[canid] = {
                 "id": canid,
                 "name": r["name"],
-                "mode": mode,
-                "mode_dependent_values": mode_dependent_values,
-                "multi_mode": multi_mode,
+                "mux_indicator": mux_indicator,
+                "mux_mode_map": mux_mode_map,
+                "mux": mux,
             }
         else:
             stbl[canid] = {
                 "id": canid,
                 "name": r["name"],
                 "values": r["values"],
-                "multi_mode": multi_mode,
+                "mux": mux,
             }
 
     return stbl
@@ -76,31 +76,31 @@ def analyze_data(bs: bytes, stbl: dict):
     fields = []
 
     # read value definition
-    # if union-typed definition, read value definitions corresponding to mode
-    if stbl["multi_mode"]:
+    # if multiplexer definition, read value definitions corresponding to mode
+    if stbl["mux"]:
         # identify mode
-        mode_def = stbl["mode"]
-        mode = b.extract_bits(bs, mode_def["start"], mode_def["length"])
+        mux_ind = stbl["mux_indicator"]
+        mux_mode = b.extract_bits(bs, mux_ind["start"], mux_ind["length"])
 
         # append mode value to result signal
         fields.append({
-            "name": mode_def["name"],
-            "bits": mode,
-            "value": mode,
-            "desc": mode_def["desc"],
+            "name": mux_ind["name"],
+            "bits": mux_mode,
+            "value": mux_mode,
+            "desc": mux_ind["desc"],
         })
 
-        ds = stbl["mode_dependent_values"][mode]
+        ds = stbl["mux_mode_map"][mux_mode]
     else:
         ds = stbl["values"]
 
     # read start positions
     ss = []
     for d in ds:
-        ss.append(d["start"])
+        ss.append((d["start"], d["length"]))
 
     # split bytes into bits by start position of each field
-    bits_list = b.split_bits(bs, ss)
+    bits_list = b.slice_bits(bs, ss)
 
     # convert bits to value
     # possible to length of bits_list is smaller than length of ds
@@ -109,9 +109,9 @@ def analyze_data(bs: bytes, stbl: dict):
     for bits in bits_list:
         d = ds[i]
 
-        value = bits
-        if(d["type"] == "float"):
-            value = float(bits) * d["resolution"] + d["minimum"]
+        # TODO(?) transform bits as signed decimal when d["signed"] = True
+
+        value = bits * d["factor"] + d["offset"]
 
         fields.append({
             "name": d["name"],

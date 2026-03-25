@@ -1,17 +1,20 @@
-def split_bits(bs: bytes, ss: list[int], end: int = -1):
+def slice_bits(bs: bytes, ss: list[(int, int)], end: int = -1):
     """Split bytes into list of bits as specified positions
     Args:
     bs  array of byte
-    ss  array of starting position to split
+    ss  array of a pair of position and length to slice
     end position to stop process
     """
+    if len(ss) == 0:
+        return []
+
     # index of current starting postion
     s_index = 0
 
     # clarify total range and first range to process
-    pos = ss[s_index]
+    pos = ss[s_index][0]
     end_pos = len(bs) << 3 if end < 0 else end
-    next_pos = min(end_pos, ss[s_index + 1]) if (s_index + 1) < len(ss) else end_pos
+    next_pos = min(end_pos, pos + ss[s_index][1])
 
     # index of current byte
     b_index = pos >> 3
@@ -57,8 +60,19 @@ def split_bits(bs: bytes, ss: list[int], end: int = -1):
         bits = 0
 
         # move onto next range
+        #s_index += 1
+        #next_pos = min(end_pos, ss[s_index + 1]) if (s_index + 1) < len(ss) else end_pos
+
+        # move onto next range
         s_index += 1
-        next_pos = min(end_pos, ss[s_index + 1]) if (s_index + 1) < len(ss) else end_pos
+        if s_index >= len(ss):
+            break
+
+        pos = ss[s_index][0]
+        next_pos = min(end_pos, pos + ss[s_index][1])
+
+        # index of current byte
+        b_index = pos >> 3
 
     return bits_list
 
@@ -70,7 +84,7 @@ def extract_bits(bs: bytes, s: int, l: int):
     s   starting index to extract
     l   length to extract
     """
-    bits_list = split_bits(bs, [s], s + l)
+    bits_list = slice_bits(bs, [(s, l)])
 
     return bits_list[0] if len(bits_list) > 0 else None
 
@@ -90,3 +104,6 @@ def hexstr_to_bytes(hex_string):
 
     return bytes(int_array)
 
+
+def extract(hex_string, s, l):
+    return extract_bits(hexstr_to_bytes(hex_string), s, l)
