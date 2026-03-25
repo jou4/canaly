@@ -60,10 +60,6 @@ def slice_bits(bs: bytes, ss: list[(int, int)], end: int = -1):
         bits = 0
 
         # move onto next range
-        #s_index += 1
-        #next_pos = min(end_pos, ss[s_index + 1]) if (s_index + 1) < len(ss) else end_pos
-
-        # move onto next range
         s_index += 1
         if s_index >= len(ss):
             break

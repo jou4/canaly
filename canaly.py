@@ -11,7 +11,7 @@ def load_stbl(file: str):
         file    file path of signal definition table in JSON format
 
     Returns:
-        dict    dignal definition table
+        dict    signal definition table
     """
     fp = open(file, "r", encoding="utf-8")
     json_list = json.load(fp)

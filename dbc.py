@@ -58,7 +58,7 @@ def parse(dbc_files):
         dbc_files   array of file path
 
     Returns:
-        stbl_dict   signal table as a dict of key=id
+        dict    signal definition table
     """
     stbl = {}
     tmp_id = ""
@@ -149,7 +149,7 @@ def merge(json_files):
         json_files  array of file path
 
     Returns:
-        stbl_dict   signal table as a dict of key=id
+        dict    signal definition table
     """
     stbl = {}
 
