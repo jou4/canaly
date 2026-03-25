@@ -185,8 +185,8 @@ def main():
     stbl.sort(key=lambda x: int(x["id"], 16))
 
     if args.output:
-        with open(args.output_file, "w", encoding="utf-8") as fp:
-            json.dump(list(stbl.values()), fp)
+        with open(args.output, "w", encoding="utf-8") as fp:
+            json.dump(stbl, fp)
     else:
         pprint.pprint(stbl)
 
