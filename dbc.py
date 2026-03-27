@@ -24,7 +24,7 @@ def hex2dec(s, bit):
 
 PAT_BO = r'^ *BO_ +(?P<id>\d+) +(?P<msg_name>\w+) *: *(?P<dlc>\d+) +(?P<tx_ecu>\w+) *'
 PAT_SG = r'^ *SG_ +(?P<sig_name>\w+) +((?P<mux_ind>M)|m(?P<mux_mode>\d+))* *: *(?P<start_bit>\d+)\|(?P<length>\d+)@(?P<byte_order>(0|1))(?P<signed>(\+|\-)) +\((?P<factor>[\d.]+),(?P<offset>[\d.]+)\) +\[(?P<min>\-?[\d.]+)\|(?P<max>\-?[\d.]+)\] +\"(?P<unit>[^\"]*)\" *(?P<rx_ecus>[\w,]+)*'
-PAT_VAL = r'^ *VAL_ +(?P<id>\d+) +(?P<sig_name>\s+) +(?P<mapping>[^;]+);'
+PAT_VAL = r'^ *VAL_ +(?P<id>\d+) +(?P<sig_name>\w+) +(?P<mapping>[^;]+);'
 PAT_MAPPING = r'(\d+) \"([^\"]*)\"'
 
 
