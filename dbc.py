@@ -22,34 +22,16 @@ def hex2dec(s, bit):
     return dec - (dec >> (bit - 1) << bit)
 
 
-PAT_BO = r'^ *BO_ +(?P<id>[0-9]+) +(?P<msg_name>[A-Za-z0-9_\-]+) *: *(?P<dlc>[0-9]+) +(?P<tx_ecu>[A-Za-z0-9_\-]+) *'
+PAT_BO = r'^ *BO_ +(?P<id>\d+) +(?P<msg_name>\w+) *: *(?P<dlc>\d+) +(?P<tx_ecu>\w+) *'
+PAT_SG = r'^ *SG_ +(?P<sig_name>\w+) +((?P<mux_ind>M)|m(?P<mux_mode>\d+))* *: *(?P<start_bit>\d+)\|(?P<length>\d+)@(?P<byte_order>(0|1))(?P<signed>(\+|\-)) +\((?P<factor>[\d.]+),(?P<offset>[\d.]+)\) +\[(?P<min>\-?[\d.]+)\|(?P<max>\-?[\d.]+)\] +\"(?P<unit>[^\"]*)\" *(?P<rx_ecus>[\w,]+)*'
+PAT_VAL = r'^ *VAL_ +(?P<id>\d+) +(?P<sig_name>\w+) +(?P<mapping>[^;]+);'
+PAT_MAPPING = r'(\d+) \"([^\"]*)\"'
 
-PAT_SG = r'^ *SG_ +(?P<sig_name>[A-Za-z0-9_\-]+) +((?P<mux_ind>M)|m(?P<mux_mode>[0-9]+))* *: *(?P<start_bit>[0-9]+)\|(?P<length>[0-9]+)@(?P<byte_order>(0|1))(?P<signed>(\+|\-)) +\((?P<factor>[0-9.]+),(?P<offset>[0-9.]+)\) +\[(?P<min>\-?[0-9.]+)\|(?P<max>\-?[0-9.]+)\] +\"(?P<unit>[^\"]*)\" *(?P<rx_ecus>[A-Za-z0-9_\-,]+)*'
 
-PAT_VAL = r'^ *VAL_ +(?P<id>[0-9]+) +(?P<sig_name>[A-Za-z0-9_\-]+) +(?P<mapping>[^;]+);'
-PAT_MAPPING = r'([0-9]+) \"([^\"]*)\"'
-
-MSB_POS_TABLE_BE = [
-   7,  6,  5,  4,  3,  2,  1,  0
- ,15, 14, 13, 12, 11, 10,  9,  8
- ,23, 22, 21, 20, 19, 18, 17, 16
- ,31, 30, 29, 28, 27, 26, 25, 24
- ,39, 38, 37, 36, 35, 34, 33, 32
- ,47, 46, 45, 44, 43, 42, 41, 40
- ,55, 54, 53, 52, 51, 50, 49, 48
- ,63, 62, 61, 60, 59, 58, 57, 56
-]
-
-MSB_POS_TABLE_LE = [
-  63, 62, 61, 60, 59, 58, 57, 56
- ,55, 54, 53, 52, 51, 50, 49, 48
- ,47, 46, 45, 44, 43, 42, 41, 40
- ,39, 38, 37, 36, 35, 34, 33, 32
- ,31, 30, 29, 28, 27, 26, 25, 24
- ,23, 22, 21, 20, 19, 18, 17, 16
- ,15, 14, 13, 12, 11, 10,  9,  8
- , 7,  6,  5,  4,  3,  2,  1,  0
-]
+def bit_pos(start):
+    byte_index = start >> 3
+    bit_col = 7 - (start % 8)
+    return (byte_index << 3) + bit_col
 
 
 def parse(dbc_files):
@@ -58,7 +40,7 @@ def parse(dbc_files):
         dbc_files   array of file path
 
     Returns:
-        dict    signal definition table
+        list   signal definition table
     """
     stbl = {}
     tmp_id = ""
@@ -93,12 +75,6 @@ def parse(dbc_files):
                     start_bit = int(match["start_bit"])
                     length = int(match["length"])
                     byte_order = int(match["byte_order"])  # 0: BE, 1: LE
-                    if byte_order == 0:
-                        # BE
-                        msb_pos = MSB_POS_TABLE_BE[start_bit]
-                    else:
-                        # LE
-                        msb_pos = MSB_POS_TABLE_LE[start_bit + length - 1]
                     signed = (match["signed"] == '-')
                     factor = float(match["factor"])
                     if factor.is_integer():
@@ -112,7 +88,7 @@ def parse(dbc_files):
                     rx_ecus = match["rx_ecus"]
 
                     stbl[tmp_id]["values"].append({
-                        "start": msb_pos,
+                        "start": bit_pos(start_bit),
                         "length": length,
                         "name": sig_name,
                         "byte_order": byte_order,
@@ -140,7 +116,9 @@ def parse(dbc_files):
                             sig_row["desc"] = desc
                             break
 
-    return stbl
+    stbl_list = list(stbl.values())
+    stbl_sort(stbl_list)
+    return stbl_list
 
 
 def merge(json_files):
@@ -149,7 +127,7 @@ def merge(json_files):
         json_files  array of file path
 
     Returns:
-        dict    signal definition table
+        list   signal definition table
     """
     stbl = {}
 
@@ -160,7 +138,17 @@ def merge(json_files):
             for r in json_list:
                 stbl[r["id"]] = r
 
-    return stbl
+    stbl_list = list(stbl.values())
+    stbl_sort(stbl_list)
+    return stbl_list
+
+
+def stbl_sort(stbl):
+    # sort by id
+    stbl.sort(key=lambda x: int(x["id"], 16))
+    # sort by start pos
+    for r in stbl:
+        r["values"].sort(key=lambda x: "%08s_%04d" % (x["mux_mode"], x["start"]))
 
 
 def main():
@@ -171,23 +159,15 @@ def main():
     parser.add_argument("files", nargs="*", help="DBC files for parse, JSON files for merge")
     args = parser.parse_args()
 
-    stbl_dict = {}
+    stbl = []
     command = args.command
     if command == 'p' or command == 'parse':
-        stbl_dict = parse(args.files)
+        stbl = parse(args.files)
     elif command == 'm' or command == 'merge':
-        stbl_dict = merge(args.files)
+        stbl = merge(args.files)
     else:
         parser.print_help()
         return 1
-
-    stbl = list(stbl_dict.values())
-
-    # sort by id
-    stbl.sort(key=lambda x: int(x["id"], 16))
-    # sort by start pos
-    for r in stbl:
-        r["values"].sort(key=lambda x: "%08s_%04d" % (x["mux_mode"], x["start"]))
 
     if args.output:
         with open(args.output, "w", encoding="utf-8") as fp:
