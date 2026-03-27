@@ -3,19 +3,32 @@ import argparse
 import re
 import datetime
 import json
+import dbc
 import bits as b
 
-def load_stbl(file: str):
-    """Load signal definition from .json file
+
+def read_json(file: str):
+    """Read JSON file of signal definition
     Args:
         file    file path of signal definition table in JSON format
 
     Returns:
-        dict    dignal definition table
+        list    signal definition table
     """
-    fp = open(file, "r", encoding="utf-8")
-    json_list = json.load(fp)
+    json_list = []
+    with open(file, "r", encoding="utf-8") as fp:
+        json_list = json.load(fp)
+    return json_list
 
+
+def load_stbl(json_list: list):
+    """Load signal definition table
+    Args:
+        json_list   signal definition table
+
+    Returns:
+        dict    signal definition table optimized for analysis
+    """
     stbl = {}
 
     for r in json_list:
@@ -94,12 +107,14 @@ def analyze_data(bs: bytes, stbl: dict):
     else:
         ds = stbl["values"]
 
+    # TODO: consider byte_order
+
     # read start positions
     ss = []
     for d in ds:
         ss.append((d["start"], d["length"]))
 
-    # split bytes into bits by start position of each field
+    # split bytes into bits by start position and length of each field
     bits_list = b.slice_bits(bs, ss)
 
     # convert bits to value
@@ -127,8 +142,8 @@ def analyze_data(bs: bytes, stbl: dict):
     return fields
 
 
-PAT_CLASSIC = r'^\((?P<datetime>[A-Za-z0-9.]+)\) (?P<interface>[A-Za-z0-9]+) (?P<id>[A-Za-z0-9]+)#(?P<data>[A-Za-z0-9]+)'
-PAT_FD = r'^\((?P<datetime>[A-Za-z0-9.]+)\) (?P<interface>[A-Za-z0-9]+) (?P<id>[A-Za-z0-9]+)##[0-9](?P<data>[A-Za-z0-9]+)'
+PAT_CLASSIC = r'^\((?P<datetime>[\w.]+)\) (?P<interface>\w+) (?P<id>\w+)#(?P<data>\w+)'
+PAT_FD = r'^\((?P<datetime>[\w.]+)\) (?P<interface>\w+) (?P<id>\w+)##\d(?P<data>\w+)'
 
 
 def analyze(text, stbl):
@@ -213,15 +228,25 @@ def main():
     # get arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("-a", "--all", action="store_true", help="show all values in the signal")
-    parser.add_argument("-b", "--bits", action="store_true", help="show values as bits of data")
-    parser.add_argument("--fd", action="store_true", help="process as CAN-FD format (@Depreciated)")
+    parser.add_argument("-b", "--bits", action="store_true", help="show values as raw data")
     parser.add_argument("-v", "--verbosity", action="count", default=0, help="increase output verbosity")
-    parser.add_argument("stbl", help="JSON file of signal definition table")
+    parser.add_argument("-j", "--stbl", help="JSON file of signal definition table")
+    parser.add_argument("-d", "--dbc", help="DBC file")
     parser.add_argument("fields", nargs="*", help="fields to show values in the signal")
     args = parser.parse_args()
 
     # CAN signal definition table
-    stbl = load_stbl(args.stbl)
+    json_list = []
+    if args.stbl:
+        json_list = read_json(args.stbl)
+    elif args.dbc:
+        json_list = dbc.parse([args.dbc])
+    else:
+        print("either option of --stbl or --dbc is required.")
+        parser.print_help()
+        return 1
+
+    stbl = load_stbl(json_list)
 
     # process each line in CAN frame logfile format
     while True:
@@ -263,9 +288,9 @@ def main():
         if args.verbosity >= 3:
             print(signal)
         else:
-            ex = ", ".join(remark_items)
+            ex = "\t".join(remark_items)
             if len(ex) > 0:
-                print("%s : %s" % (signal["text"], ex))
+                print("%s\t%s" % (signal["text"], ex))
             else:
                 print(signal["text"])
 
