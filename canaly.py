@@ -216,6 +216,24 @@ def find_fields(names, fields):
     return fs
 
 
+def match_fields(patterns, fields):
+    """Find fields data by pattern specified
+    Args:
+        patterns    array of field name
+        fields      array of data in signal
+
+    Returns:
+        dict    fields data, key is name, value is dict of a field data
+    """
+    fs = {}
+
+    for f in fields:
+        if any(list(map(lambda p: p.search(f["name"]), patterns))):
+            fs[f["name"]] = f
+
+    return fs
+
+
 def format_name_and_value(item: tuple):
     return f"{item[0]}={item[1]['value']}"
 
@@ -232,6 +250,7 @@ def main():
     parser.add_argument("-v", "--verbosity", action="count", default=0, help="increase output verbosity")
     parser.add_argument("-j", "--stbl", help="JSON file of signal definition table")
     parser.add_argument("-d", "--dbc", help="DBC file")
+    parser.add_argument("-e", "--regexp", action="store_true", help="use fields as regular expression")
     parser.add_argument("fields", nargs="*", help="fields to show values in the signal")
     args = parser.parse_args()
 
@@ -266,11 +285,15 @@ def main():
             continue
 
         # identify field data to be detailed in remark
-        field_names = args.fields
-        if args.all:
-            field_names = list(map(lambda f: f["name"], signal["fields"]))
-
-        fields = find_fields(field_names, signal["fields"])
+        if args.regexp:
+            # use regex patterns
+            field_patterns = list(map(lambda f: re.compile(f), args.fields))
+            fields = match_fields(field_patterns, signal["fields"])
+        else:
+            field_names = args.fields
+            if args.all:
+                field_names = list(map(lambda f: f["name"], signal["fields"]))
+            fields = find_fields(field_names, signal["fields"])
 
         # generate remark text
         formatter = format_name_and_value
