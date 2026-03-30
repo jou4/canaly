@@ -100,6 +100,7 @@ def analyze_data(bs: bytes, stbl: dict):
             "name": mux_ind["name"],
             "bits": mux_mode,
             "value": mux_mode,
+            "unit": mux_ind["unit"],
             "desc": mux_ind["desc"],
         })
 
@@ -303,7 +304,7 @@ def main():
         remark_items = list(map(formatter, fields.items()))
         if args.verbosity >= 1:
             remark_items = list(map(
-                lambda x, item: f"{x} ({item['unit']} | {item['desc']})",
+                lambda x, item: "%s (%s)" % (x, "|".join(filter(lambda x: x, [item['unit'], item['desc']]))),
                 remark_items,
                 fields.values()))
 
