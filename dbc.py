@@ -22,10 +22,10 @@ def hex2dec(s, bit):
     return dec - (dec >> (bit - 1) << bit)
 
 
-PAT_BO = r'^ *BO_ +(?P<id>\d+) +(?P<msg_name>\w+) *: *(?P<dlc>\d+) +(?P<tx_ecu>\w+) *'
-PAT_SG = r'^ *SG_ +(?P<sig_name>\w+) +((?P<mux_ind>M)|m(?P<mux_mode>\d+))* *: *(?P<start_bit>\d+)\|(?P<length>\d+)@(?P<byte_order>(0|1))(?P<signed>(\+|\-)) +\((?P<factor>[\d.]+),(?P<offset>[\d.]+)\) +\[(?P<min>\-?[\d.]+)\|(?P<max>\-?[\d.]+)\] +\"(?P<unit>[^\"]*)\" *(?P<rx_ecus>[\w,]+)*'
-PAT_VAL = r'^ *VAL_ +(?P<id>\d+) +(?P<sig_name>\w+) +(?P<mapping>[^;]+);'
-PAT_MAPPING = r'(\d+) \"([^\"]*)\"'
+PAT_BO = re.compile(r'^ *BO_ +(?P<id>\d+) +(?P<msg_name>\w+) *: *(?P<dlc>\d+) +(?P<tx_ecu>\w+) *')
+PAT_SG = re.compile(r'^ *SG_ +(?P<sig_name>\w+) +((?P<mux_ind>M)|m(?P<mux_mode>\d+))* *: *(?P<start_bit>\d+)\|(?P<length>\d+)@(?P<byte_order>(0|1))(?P<signed>(\+|\-)) +\((?P<factor>[\d.]+),(?P<offset>[\d.]+)\) +\[(?P<min>\-?[\d.]+)\|(?P<max>\-?[\d.]+)\] +\"(?P<unit>[^\"]*)\" *(?P<rx_ecus>[\w,]+)*')
+PAT_VAL = re.compile(r'^ *VAL_ +(?P<id>\d+) +(?P<sig_name>\w+) +(?P<mapping>[^;]+);')
+PAT_MAPPING = re.compile(r'(\d+) \"([^\"]*)\"')
 
 
 def bit_pos(start):
@@ -50,7 +50,7 @@ def parse(dbc_files):
             for line in fp:
 
                 # BO record
-                match = re.search(PAT_BO, line)
+                match = PAT_BO.search(line)
                 if match:
                     id = format(int(match["id"]), 'X')
                     msg_name = match["msg_name"]
@@ -65,7 +65,7 @@ def parse(dbc_files):
                     tmp_id = id
 
                 # SG record
-                match = re.search(PAT_SG, line)
+                match = PAT_SG.search(line)
                 if match:
                     sig_name = match["sig_name"]
                     mux_indicator = (match["mux_ind"] == 'M')
@@ -104,11 +104,11 @@ def parse(dbc_files):
                     })
 
                 # VAL record
-                match = re.search(PAT_VAL, line)
+                match = PAT_VAL.search(line)
                 if match:
                     id = format(int(match["id"]), 'X')
                     sig_name = match["sig_name"]
-                    mapping = re.findall(PAT_MAPPING, match["mapping"])
+                    mapping = PAT_MAPPING.findall(match["mapping"])
                     desc = ", ".join(map(lambda x: "%s: %s" % x, mapping))
 
                     for sig_row in stbl[id]["values"]:

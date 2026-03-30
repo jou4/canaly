@@ -142,8 +142,8 @@ def analyze_data(bs: bytes, stbl: dict):
     return fields
 
 
-PAT_CLASSIC = r'^\((?P<datetime>[\w.]+)\) (?P<interface>\w+) (?P<id>\w+)#(?P<data>\w+)'
-PAT_FD = r'^\((?P<datetime>[\w.]+)\) (?P<interface>\w+) (?P<id>\w+)##\d(?P<data>\w+)'
+PAT_CLASSIC = re.compile(r'^\((?P<datetime>[\w.]+)\) (?P<interface>\w+) (?P<id>\w+)#(?P<data>\w+)')
+PAT_FD = re.compile(r'^\((?P<datetime>[\w.]+)\) (?P<interface>\w+) (?P<id>\w+)##\d(?P<data>\w+)')
 
 
 def analyze(text, stbl):
@@ -162,9 +162,9 @@ def analyze(text, stbl):
     signal = {"text": text}
 
     # pattern matching
-    match = re.search(PAT_CLASSIC, text)
+    match = PAT_CLASSIC.search(text)
     if not match:
-        match = re.search(PAT_FD, text)
+        match = PAT_FD.search(text)
 
     if match:
         timestamp = float(match.group("datetime"))
