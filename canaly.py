@@ -235,12 +235,22 @@ def match_fields(patterns, fields):
     return fs
 
 
-def format_name_and_value(item: tuple):
-    return f"{item[0]}={item[1]['value']}"
+def format_name_and_value(delim="="):
+    def wrapper(item: dict):
+        return f"{item['name']}{delim}{item['value']}"
+    return wrapper
 
 
-def format_name_and_bits(item: tuple):
-    return "%s=0x%X" % (item[0], item[1]['bits'])
+def format_name_and_bits(delim="="):
+    def wrapper(item: dict):
+        return "%s%s0x%X" % (item['name'], delim, item['bits'])
+    return wrapper
+
+
+def clear_lines(n):
+    for _ in range(n):
+        sys.stdout.write("\033[F")   # move cursor to one above
+        sys.stdout.write("\033[K")   # clear a line
 
 
 def main():
@@ -252,6 +262,7 @@ def main():
     parser.add_argument("-j", "--stbl", help="JSON file of signal definition table")
     parser.add_argument("-d", "--dbc", help="DBC file")
     parser.add_argument("-e", "--regexp", action="store_true", help="use fields as regular expression")
+    parser.add_argument("-m", "--monitor", action="store_true", help="monitor focusing on specified fields")
     parser.add_argument("fields", nargs="*", help="fields to show values in the signal")
     args = parser.parse_args()
 
@@ -267,6 +278,17 @@ def main():
         return 1
 
     stbl = load_stbl(json_list)
+
+    monitoring_fields = {}
+
+    # formatter for signal
+    delim = "="
+    if args.monitor:
+        delim = "\t"
+
+    formatter = format_name_and_value(delim)
+    if args.bits:
+        formatter = format_name_and_bits(delim)
 
     # process each line in CAN frame logfile format
     while True:
@@ -296,27 +318,40 @@ def main():
                 field_names = list(map(lambda f: f["name"], signal["fields"]))
             fields = find_fields(field_names, signal["fields"])
 
-        # generate remark text
-        formatter = format_name_and_value
-        if args.bits:
-            formatter = format_name_and_bits
+        if args.monitor:
+            line_num = len(monitoring_fields.keys())
+            updated = False
+            for k, v in fields.items():
+                if k in monitoring_fields:
+                    if monitoring_fields[k]["bits"] != v["bits"]:
+                        monitoring_fields[k] = v
+                        updated = True
+                else:
+                    monitoring_fields[k] = v
+                    updated = True
 
-        remark_items = list(map(formatter, fields.items()))
-        if args.verbosity >= 1:
-            remark_items = list(map(
-                lambda x, item: "%s (%s)" % (x, "|".join(filter(lambda x: x, [item['unit'], item['desc']]))),
-                remark_items,
-                fields.values()))
+            if updated:
+                clear_lines(line_num)
+                print("\n".join(map(formatter, monitoring_fields.values())))
 
-        # print text according to verbosity level
-        if args.verbosity >= 3:
-            print(signal)
         else:
-            ex = "\t".join(remark_items)
-            if len(ex) > 0:
-                print("%s\t%s" % (signal["text"], ex))
+            # generate remark text
+            remark_items = list(map(formatter, fields.values()))
+            if args.verbosity >= 1:
+                remark_items = list(map(
+                    lambda x, item: "%s (%s)" % (x, "|".join(filter(lambda x: x, [item['unit'], item['desc']]))),
+                    remark_items,
+                    fields.values()))
+
+            # print text according to verbosity level
+            if args.verbosity >= 3:
+                print(signal)
             else:
-                print(signal["text"])
+                ex = "\t".join(remark_items)
+                if len(ex) > 0:
+                    print("%s\t%s" % (signal["text"], ex))
+                else:
+                    print(signal["text"])
 
     return 0
 
