@@ -104,7 +104,11 @@ def analyze_data(bs: bytes, stbl: dict):
             "desc": mux_ind["desc"],
         })
 
-        ds = stbl["mux_mode_map"][mux_mode]
+        if mux_mode in stbl["mux_mode_map"]:
+            ds = stbl["mux_mode_map"][mux_mode]
+        else:
+            # no multiplexer mode matched
+            return fields
     else:
         ds = stbl["values"]
 
