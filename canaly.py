@@ -331,8 +331,17 @@ def main():
                     updated = True
 
             if updated:
+                # generate remark text
+                remark_items = map(formatter, monitoring_fields.values())
+                if args.verbosity >= 1:
+                    remark_items = map(
+                        lambda x, item: "%s (%s)" % (x, "|".join(filter(lambda x: x, [item['unit'], item['desc']]))),
+                        remark_items,
+                        monitoring_fields.values())
+
+                # print text
                 clear_lines(line_num)
-                print("\n".join(map(formatter, monitoring_fields.values())))
+                print("\n".join(remark_items))
 
         else:
             # generate remark text
