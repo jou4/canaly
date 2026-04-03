@@ -22,10 +22,10 @@ def hex2dec(s, bit):
     return dec - (dec >> (bit - 1) << bit)
 
 
-PAT_BO = re.compile(r'^ *BO_ +(?P<id>\d+) +(?P<msg_name>\w+) *: *(?P<dlc>\d+) +(?P<tx_ecu>\w+) *')
-PAT_SG = re.compile(r'^ *SG_ +(?P<sig_name>\w+) +((?P<mux_ind>M)|m(?P<mux_mode>\d+))* *: *(?P<start_bit>\d+)\|(?P<length>\d+)@(?P<byte_order>(0|1))(?P<signed>(\+|\-)) +\((?P<factor>[\d.]+),(?P<offset>[\d.]+)\) +\[(?P<min>\-?[\d.]+)\|(?P<max>\-?[\d.]+)\] +\"(?P<unit>[^\"]*)\" *(?P<rx_ecus>[\w,]+)*')
-PAT_VAL = re.compile(r'^ *VAL_ +(?P<id>\d+) +(?P<sig_name>\w+) +(?P<mapping>[^;]+);')
-PAT_MAPPING = re.compile(r'(\d+) \"([^\"]*)\"')
+PAT_BO = re.compile(r'^\s*BO_\s+(?P<id>\d+)\s+(?P<msg_name>\w+)\s*:\s*(?P<dlc>\d+)\s+(?P<tx_ecu>\w+)\s*')
+PAT_SG = re.compile(r'^\s*SG_\s+(?P<sig_name>\w+)\s+((?P<mux_ind>M)|m(?P<mux_mode>\d+))*\s*:\s*(?P<start_bit>\d+)\|(?P<length>\d+)@(?P<byte_order>(0|1))(?P<signed>(\+|\-))\s+\((?P<factor>[\d.]+),(?P<offset>[\d.]+)\)\s+\[(?P<min>\-?[\d.]+)\|(?P<max>\-?[\d.]+)\]\s+\"(?P<unit>[^\"]*)\"\s*(?P<rx_ecus>[\w,]+)*')
+PAT_VAL = re.compile(r'^\s*VAL_\s+(?P<id>\d+)\s+(?P<sig_name>\w+)\s+(?P<mapping>[^;]+);')
+PAT_MAPPING = re.compile(r'(\d+)\s+\"([^\"]*)\"')
 
 
 def bit_pos(start):

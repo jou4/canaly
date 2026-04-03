@@ -143,8 +143,8 @@ def analyze_data(bs: bytes, stbl: dict):
     return fields
 
 
-PAT_CLASSIC = re.compile(r'^\((?P<datetime>[\w.]+)\) (?P<interface>\w+) (?P<id>\w+)#(?P<data>\w+)')
-PAT_FD = re.compile(r'^\((?P<datetime>[\w.]+)\) (?P<interface>\w+) (?P<id>\w+)##\d(?P<data>\w+)')
+PAT_CLASSIC = re.compile(r'^\((?P<datetime>[\w.]+)\)\s+(?P<interface>\w+)\s+(?P<id>\w+)#(?P<data>\w+)')
+PAT_FD = re.compile(r'^\((?P<datetime>[\w.]+)\)\s+(?P<interface>\w+)\s+(?P<id>\w+)##\d(?P<data>\w+)')
 
 
 def analyze(text, stbl):
