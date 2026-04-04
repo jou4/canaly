@@ -1,3 +1,4 @@
+import pathlib
 import sys
 import argparse
 import re
@@ -155,20 +156,43 @@ def stbl_sort(stbl):
         r["values"].sort(key=lambda x: "%08s_%04d" % (x["mux_mode"], x["start"]))
 
 
+def collect_files(inputs, pattern):
+    """Collect files from multiple paths
+    Args:
+        inputs  array of file or directory path
+        pattern file name pattern for directory input
+
+    Returns:
+        files   array of file path
+    """
+    files = []
+    for sp in inputs:
+        p = pathlib.Path(sp)
+
+        if p.is_file():
+            files.append(str(p))
+        elif p.is_dir():
+            files.extend(str(f) for f in sorted(p.glob(pattern)) if f.is_file())
+
+    return files
+
+
 def main():
     # get arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("command", help="p(arse)|m(erge)")
     parser.add_argument("-O", "--output", help="output file")
-    parser.add_argument("files", nargs="*", help="DBC files for parse, JSON files for merge")
+    parser.add_argument("inputs", nargs="*", help="DBC files or directories for parse, JSON files or directories for merge")
     args = parser.parse_args()
 
     stbl = []
     command = args.command
     if command == 'p' or command == 'parse':
-        stbl = parse(args.files)
+        files = collect_files(args.inputs, "*.dbc")
+        stbl = parse(files)
     elif command == 'm' or command == 'merge':
-        stbl = merge(args.files)
+        files = collect_files(args.inputs, "*.json")
+        stbl = merge(files)
     else:
         parser.print_help()
         return 1
