@@ -104,7 +104,7 @@ def analyze_data(bs: bytes, stbl: dict):
             "desc": mux_ind["desc"],
         })
 
-        ds = stbl["mux_mode_map"][mux_mode]
+        ds = stbl["mux_mode_map"].get(mux_mode, [])
     else:
         ds = stbl["values"]
 
