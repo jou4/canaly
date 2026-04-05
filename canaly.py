@@ -462,7 +462,8 @@ def main():
 
             # print text then go to next if CAN ID is not found in stbl
             if not res:
-                print(signal["text"])
+                if not (args.monitor or args.chart):
+                    print(signal["text"])
                 continue
 
             # identify field data to be detailed in remark
