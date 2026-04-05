@@ -3,8 +3,23 @@ import argparse
 import re
 import datetime
 import json
+import time
+import threading
+from collections import deque
 import dbc
 import bits as b
+
+CHART_RUNNABlE = False
+try:
+    import plotext as plt
+    from rich.live import Live
+    from rich.table import Table
+    from rich.text import Text
+    from rich.panel import Panel
+    from rich import box
+    CHART_RUNNABlE = True
+except ModuleNotFoundError:
+    pass
 
 
 def read_json(file: str):
@@ -251,10 +266,131 @@ def format_name_and_bits(delim="="):
     return wrapper
 
 
+def format_desc(item):
+    unit = item['unit']
+    desc = item['desc']
+
+    if unit and desc:
+        return f"{unit}|{desc}"
+    elif unit:
+        return f"{unit}"
+    elif desc:
+        return f"{desc}"
+    else:
+        return ""
+
+
 def clear_lines(n):
     for _ in range(n):
         sys.stdout.write("\033[F")   # move cursor to one above
         sys.stdout.write("\033[K")   # clear a line
+
+
+HISTORY_NUM = 100
+UPDATE_CYCLE_SEC = 0.1
+GRAPH_W = 100
+GRAPH_H = 6
+Y_LABEL_W = 6
+REFRESH_HZ  = 4
+
+class MonitoringItem:
+    def __init__(self, field, key = "value", history_num = HISTORY_NUM):
+        self._current = field
+        self._key = key
+        self._history = deque([0] * history_num, maxlen=history_num)
+        self._history.append(field[self._key])
+        self._min = min(0, field[self._key])
+        self._max = max(0, field[self._key])
+
+    def set(self, field):
+        self._current = field
+        self._min = min(self._min, field[self._key])
+        self._max = max(self._max, field[self._key])
+
+    def update(self):
+        self._history.append(self._current[self._key])
+
+    def current(self):
+        return self._current
+
+    def val(self):
+        return self._current[self._key]
+
+    def min(self):
+        return self._min
+
+    def max(self):
+        return self._max
+
+    def history(self):
+        return self._history
+
+
+def make_graph(item):
+    history = list(item.history())
+
+    plt.clear_figure()
+    plt.plot_size(GRAPH_W, GRAPH_H)
+    plt.plot(history, color="blue+")
+
+    min_val = item.min()
+    max_val = item.max()
+    if min_val == max_val:
+        max_val = min_val + 1
+
+    plt.ylim(min_val, max_val)
+
+    plt.xaxes(False)
+    plt.xticks([])
+
+    #ytick_vals = [min_val, (min_val + max_val) / 2, max_val]
+    ytick_vals = [min_val, max_val]
+    ytick_labels = [f"{v:{Y_LABEL_W}.1f}" for v in ytick_vals]
+
+    plt.yaxes(True)
+    plt.yticks(ytick_vals, ytick_labels)
+
+    plt.frame(True)
+
+    return Text.from_ansi(plt.build())
+
+
+def make_table(monitoring_fields, bits=False):
+    table = Table(
+        box=box.SIMPLE,
+        show_header=True,
+        header_style="bold cyan",
+        padding=(0, 1),
+    )
+    table.add_column("Signal", style="cyan", width=30)
+    table.add_column("Current", width=10)
+    table.add_column("Chart", width=GRAPH_W + 2)
+
+    # get keys in advance
+    # to prevent dictionary size change during iteration
+    names = monitoring_fields.keys()
+    for name in names:
+        item = monitoring_fields[name]
+        table.add_row(
+            name,
+            ("0x%X" % (item.val())) if bits else f"{item.val()}",
+            make_graph(item)
+        )
+
+    return Panel(table, title="[bold]CAN Signal Monitor[/bold]", border_style="bright_black")
+
+
+def chart_thread(status, monitoring_fields):
+    def wrapper():
+        with Live(make_table(monitoring_fields, status["bits"]), refresh_per_second=REFRESH_HZ, screen=False) as live:
+            while not status["stop"]:
+                for item in monitoring_fields.values():
+                    item.update()
+
+                live.update(make_table(monitoring_fields, status["bits"]))
+                time.sleep(UPDATE_CYCLE_SEC)
+
+    return wrapper
 
 
 def main():
@@ -267,8 +403,13 @@ def main():
     parser.add_argument("-d", "--dbc", help="DBC file")
     parser.add_argument("-e", "--regexp", action="store_true", help="use fields as regular expression")
     parser.add_argument("-m", "--monitor", action="store_true", help="monitor focusing on specified fields")
+    parser.add_argument("-c", "--chart", action="store_true", help="monitor using chart")
     parser.add_argument("fields", nargs="*", help="fields to show values in the signal")
     args = parser.parse_args()
+
+    if (not CHART_RUNNABlE) and args.chart:
+        print("--chart requires some modules.")
+        return 1
 
     # CAN signal definition table
     json_list = []
@@ -291,80 +432,96 @@ def main():
         delim = "\t"
 
     formatter = format_name_and_value(delim)
+    label = "value"
     if args.bits:
         formatter = format_name_and_bits(delim)
+        label = "bits"
 
-    # process each line in CAN frame logfile format
-    while True:
-        # read a line
-        line = sys.stdin.readline()
+    if args.chart:
+        status = {
+            "stop": False,
+            "bits": args.bits,
+        }
+        t = threading.Thread(target=chart_thread(status, monitoring_fields))
+        t.start()
 
-        if not line:
-            break
+    try:
+        # process each line in CAN frame logfile format
+        while True:
+            # read a line
+            line = sys.stdin.readline()
 
-        # analyze text using stbl
-        # res will be True if stbl has a definition of the CAN ID
-        res, signal = analyze(line.rstrip('\r\n'), stbl)
+            if not line:
+                break
 
-        # print text then go to next if CAN ID is not found in stbl
-        if not res:
-            print(signal["text"])
-            continue
+            # analyze text using stbl
+            # res will be True if stbl has a definition of the CAN ID
+            res, signal = analyze(line.rstrip('\r\n'), stbl)
 
-        # identify field data to be detailed in remark
-        if args.regexp:
-            # use regex patterns
-            field_patterns = list(map(lambda f: re.compile(f), args.fields))
-            fields = match_fields(field_patterns, signal["fields"])
-        else:
-            field_names = args.fields
-            if args.all:
-                field_names = list(map(lambda f: f["name"], signal["fields"]))
-            fields = find_fields(field_names, signal["fields"])
+            # print text then go to next if CAN ID is not found in stbl
+            if not res:
+                print(signal["text"])
+                continue
 
-        if args.monitor:
-            line_num = len(monitoring_fields.keys())
-            updated = False
-            for k, v in fields.items():
-                if k in monitoring_fields:
-                    if monitoring_fields[k]["bits"] != v["bits"]:
-                        monitoring_fields[k] = v
-                        updated = True
-                else:
-                    monitoring_fields[k] = v
-                    updated = True
-
-            if updated:
-                # generate remark text
-                remark_items = map(formatter, monitoring_fields.values())
-                if args.verbosity >= 1:
-                    remark_items = map(
-                        lambda x, item: "%s (%s)" % (x, "|".join(filter(lambda x: x, [item['unit'], item['desc']]))),
-                        remark_items,
-                        monitoring_fields.values())
-
-                # print text
-                clear_lines(line_num)
-                print("\n".join(remark_items))
-
-        else:
-            # generate remark text
-            remark_items = list(map(formatter, fields.values()))
-            if args.verbosity >= 1:
-                remark_items = list(map(
-                    lambda x, item: "%s (%s)" % (x, "|".join(filter(lambda x: x, [item['unit'], item['desc']]))),
-                    remark_items,
-                    fields.values()))
-
-            # print text according to verbosity level
-            if args.verbosity >= 3:
-                print(signal)
+            # identify field data to be detailed in remark
+            if args.regexp:
+                # use regex patterns
+                field_patterns = list(map(lambda f: re.compile(f), args.fields))
+                fields = match_fields(field_patterns, signal["fields"])
             else:
-                ex = "\t".join(remark_items)
-                if len(ex) > 0:
-                    print("%s\t%s" % (signal["text"], ex))
+                field_names = args.fields
+                if args.all:
+                    field_names = list(map(lambda f: f["name"], signal["fields"]))
+                fields = find_fields(field_names, signal["fields"])
+
+            if args.monitor or args.chart:
+                line_num = len(monitoring_fields.keys())
+                updated = False
+                for k, v in fields.items():
+                    if k in monitoring_fields:
+                        if monitoring_fields[k].current()["bits"] != v["bits"]:
+                            monitoring_fields[k].set(v)
+                            updated = True
+                    else:
+                        monitoring_fields[k] = MonitoringItem(v, key=label)
+                        updated = True
+
+                if (not args.chart) and args.monitor and updated:
+                    # generate remark text
+                    remark_items = map(lambda item: formatter(item.current()), monitoring_fields.values())
+                    if args.verbosity >= 1:
+                        remark_items = map(
+                            lambda x, item:
+                                "%s\t(%s)" % (x, format_desc(item.current())),
+                            remark_items,
+                            monitoring_fields.values())
+
+                    # print text
+                    clear_lines(line_num)
+                    print("\n".join(remark_items))
+
+            else:
+                # generate remark text
+                remark_items = list(map(formatter, fields.values()))
+                if args.verbosity >= 1:
+                    remark_items = list(map(
+                        lambda x, item: "%s (%s)" % (x, format_desc(item)),
+                        remark_items,
+                        fields.values()))
+
+                # print text according to verbosity level
+                if args.verbosity >= 3:
+                    print(signal)
                 else:
-                    print(signal["text"])
+                    ex = "\t".join(remark_items)
+                    if len(ex) > 0:
+                        print("%s\t%s" % (signal["text"], ex))
+                    else:
+                        print(signal["text"])
+
+    except KeyboardInterrupt:
+        if args.chart:
+            status["stop"] = True
 
     return 0
 
