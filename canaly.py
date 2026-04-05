@@ -390,6 +390,8 @@ def chart_thread(status, monitoring_fields):
                 live.update(make_table(monitoring_fields, status["bits"]))
                 time.sleep(UPDATE_CYCLE_SEC)
 
+            live.stop()
+
     return wrapper
 
 
@@ -522,6 +524,11 @@ def main():
     except KeyboardInterrupt:
         if args.chart:
             status["stop"] = True
+
+
+    if args.chart:
+        status["stop"] = True
+        t.join()
 
     return 0
 
