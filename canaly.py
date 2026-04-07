@@ -445,7 +445,7 @@ def main():
             "bits": args.bits,
         }
         t = threading.Thread(target=chart_thread(status, monitoring_fields))
-        t.start()
+        thread_started = False
 
     try:
         # process each line in CAN frame logfile format
@@ -455,6 +455,12 @@ def main():
 
             if not line:
                 break
+
+            if args.chart and (not thread_started):
+                # start chart thread after reading first line
+                # to ensure the chart header does not overlap with others like SSH login prompt
+                t.start()
+                thread_started = True
 
             # analyze text using stbl
             # res will be True if stbl has a definition of the CAN ID
@@ -523,11 +529,10 @@ def main():
                         print(signal["text"])
 
     except KeyboardInterrupt:
-        if args.chart:
-            status["stop"] = True
+        pass
 
 
-    if args.chart:
+    if args.chart and thread_started:
         status["stop"] = True
         t.join()
 
