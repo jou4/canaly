@@ -129,6 +129,10 @@ def analyze_data(bs: bytes, stbl: dict):
 
         value = bits * d["factor"] + d["offset"]
 
+        dec_part = d.get("dec_part", 0)
+        if dec_part:
+            value = round(value, dec_part)
+
         fields.append({
             "name": d["name"],
             "bits": bits,

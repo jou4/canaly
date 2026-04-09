@@ -77,8 +77,11 @@ def parse(dbc_files):
                     byte_order = int(match["byte_order"])  # 0: BE, 1: LE
                     signed = (match["signed"] == '-')
                     factor = float(match["factor"])
+                    dec_part = 0
                     if factor.is_integer():
                         factor = int(factor)
+                    else:
+                        dec_part = len(str(factor).split('.')[1])
                     offset = float(match["offset"])
                     if offset.is_integer():
                         offset = int(offset)
@@ -96,6 +99,7 @@ def parse(dbc_files):
                         "mux_indicator": mux_indicator,
                         "mux_mode": mux_mode,
                         "factor": factor,
+                        "dec_part": dec_part,
                         "offset": offset,
                         "min": min,
                         "max": max,
