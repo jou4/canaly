@@ -1,3 +1,4 @@
+import glob
 import sys
 import argparse
 import re
@@ -155,20 +156,40 @@ def stbl_sort(stbl):
         r["values"].sort(key=lambda x: "%08s_%04d" % (x["mux_mode"], x["start"]))
 
 
+def collect_files(patterns):
+    """Collect files by glob patterns
+    Args:
+        patterns: array of glob patterns
+
+    Returns:
+        files: list of matching files
+    """
+    files = []
+    for p in patterns:
+        matches = sorted(glob.glob(p))
+        if matches:
+            files.extend(matches)
+        else:
+            files.append(p)
+    return files
+
+
 def main():
     # get arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("command", help="p(arse)|m(erge)")
     parser.add_argument("-O", "--output", help="output file")
-    parser.add_argument("files", nargs="*", help="DBC files for parse, JSON files for merge")
+    parser.add_argument("files", nargs="*", help="DBC files for parse, JSON files for merge; glob patterns are also accepted")
     args = parser.parse_args()
+
+    files = collect_files(args.files)
 
     stbl = []
     command = args.command
     if command == 'p' or command == 'parse':
-        stbl = parse(args.files)
+        stbl = parse(files)
     elif command == 'm' or command == 'merge':
-        stbl = merge(args.files)
+        stbl = merge(files)
     else:
         parser.print_help()
         return 1
