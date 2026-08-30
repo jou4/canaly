@@ -53,7 +53,7 @@ def parse(dbc_files):
                 # BO record
                 match = PAT_BO.search(line)
                 if match:
-                    id = format(int(match["id"]), 'X')
+                    id = format(int(match["id"]) & 0x1FFFFFFF, 'X')
                     msg_name = match["msg_name"]
                     dlc = int(match["dlc"])
                     tx_ecu = match["tx_ecu"]
@@ -111,7 +111,7 @@ def parse(dbc_files):
                 # VAL record
                 match = PAT_VAL.search(line)
                 if match:
-                    id = format(int(match["id"]), 'X')
+                    id = format(int(match["id"]) & 0x1FFFFFFF, 'X')
                     sig_name = match["sig_name"]
                     mapping = PAT_MAPPING.findall(match["mapping"])
                     desc = ", ".join(map(lambda x: "%s: %s" % x, mapping))
