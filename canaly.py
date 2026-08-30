@@ -353,6 +353,16 @@ def main():
     # for monitor and chart
     monitoring_fields = {}
 
+    # import chart module only when --chart is specified,
+    # so that other modes do not require the extra dependencies (plotext, rich)
+    chart_mod = None
+    if args.chart:
+        try:
+            import chart as chart_mod
+        except ModuleNotFoundError:
+            print("--chart requires some modules. Try: pip install -r requirements.txt")
+            return 1
+
     chart_thread_stop = None
 
     try:
@@ -367,8 +377,7 @@ def main():
             if args.chart and (not chart_thread_stop):
                 # start chart thread after reading first line
                 # to ensure the chart header does not overlap with others like SSH login prompt
-                import chart
-                chart_thread_stop = chart.start_thread(monitoring_fields, args.bits)
+                chart_thread_stop = chart_mod.start_thread(monitoring_fields, args.bits)
 
             # analyze text using stbl
             # res will be True if stbl has a definition of the CAN ID
@@ -438,10 +447,6 @@ def main():
                         print("%s\t%s" % (signal["text"], ex))
                     else:
                         print(signal["text"])
-
-    except ModuleNotFoundError:
-        if args.chart:
-            print("--chart requires some modules.")
 
     except KeyboardInterrupt:
         pass
