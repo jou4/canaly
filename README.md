@@ -16,4 +16,6 @@ $ cat example/canlog.txt | python3 canaly.py -a -d example/test.dbc
 $ cat example/canlog.txt | python3 canaly.py -vvv -d example/test.dbc
 $ cat example/canlog.txt | python3 canaly.py -j example/test.json Sig11 Sig12 Sig2_0_1 Sig2_0_2 Sig2_F_1 Sig2_F_2
 $ cat example/canlog.txt | python3 canaly.py -v -d example/test.dbc Sig11
+$ cat example/canlog.txt | python3 canaly.py -m -d example/test.dbc Sig11 Sig12
+$ cat example/canlog.txt | python3 canaly.py -c -d example/test.dbc Sig11 Sig12
 ```
