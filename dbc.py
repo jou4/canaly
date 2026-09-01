@@ -16,6 +16,14 @@ def is_integer(n):
         return float(n).is_integer()
 
 
+def dec_part_len(s):
+    tmp = s.split('.')
+    if len(tmp) == 2:
+        return len(tmp[1])
+    else:
+        return 0
+
+
 def hex2dec(s, bit):
     dec = int(s, 16)
     if dec >> bit:
@@ -77,12 +85,12 @@ def parse(dbc_files):
                     length = int(match["length"])
                     byte_order = int(match["byte_order"])  # 0: BE, 1: LE
                     signed = (match["signed"] == '-')
-                    factor = float(match["factor"])
-                    dec_part = 0
-                    if factor.is_integer():
-                        factor = int(factor)
+                    factor = match["factor"]
+                    dec_part = dec_part_len(factor)
+                    if dec_part > 0:
+                        factor = float(factor)
                     else:
-                        dec_part = len(str(factor).split('.')[1])
+                        factor = int(factor)
                     offset = float(match["offset"])
                     if offset.is_integer():
                         offset = int(offset)
